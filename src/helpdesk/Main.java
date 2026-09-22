@@ -63,10 +63,6 @@ public class Main {
 
         TicketService ticketService = new TicketService(notificationService);
 
-        TicketRepository ticketRepository = new TicketRepository();
-
-        ticketRepository.add(ticket);
-
         ticketService.startTicket(ticket);
         System.out.println("Статус: " + ticket.getStatus());
 
@@ -76,11 +72,63 @@ public class Main {
         ticketService.closeTicket(ticket);
         System.out.println("Статус: " + ticket.getStatus());
 
+
+        System.out.println("\n=== ПРОВЕРКА ОТМЕНЫ ===");
+
+        Ticket cancelledTicket = new Ticket(
+                2,
+                "Не работает принтер",
+                "Принтер не отвечает"
+        );
+
+        System.out.println(
+                "Статус до отмены: " + cancelledTicket.getStatus()
+        );
+
+        cancelledTicket.cancel();
+
+        System.out.println(
+                "Статус после отмены: " + cancelledTicket.getStatus()
+        );
+
+        System.out.println("\nПопытка отменить закрытую заявку:");
+
+        ticket.cancel();
+
+        System.out.println(
+                "Статус закрытой заявки: " + ticket.getStatus()
+        );
+
+
+        System.out.println("\n=== ПРОВЕРКА НАЗВАНИЯ ===");
+
+        try {
+            Ticket invalidTicket = new Ticket(
+                3,
+                "   ",
+                "Описание заявки"
+            );
+
+            System.out.println(
+                "Создана заявка: " + invalidTicket.getTitle()
+            );
+        } catch (IllegalArgumentException exception) {
+            System.out.println(
+                "Ошибка: " + exception.getMessage()
+            );
+        }
+
+
+        TicketRepository ticketRepository = new TicketRepository();
+
+        ticketRepository.add(ticket);
+        ticketRepository.add(cancelledTicket);
+
         System.out.println("\nПолный список заявок:");
 
         for (Ticket savedTicket : ticketRepository.findAll()) {
             System.out.println(
-                "#" + savedTicket.getId() + " " + savedTicket.getTitle() + " | " + savedTicket.getStatus()
+                savedTicket.toString()
             );
         }
     }
