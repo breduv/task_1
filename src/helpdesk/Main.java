@@ -4,14 +4,19 @@ import helpdesk.model.Administrator;
 import helpdesk.model.Customer;
 import helpdesk.model.SupportAgent;
 import helpdesk.model.Ticket;
+import helpdesk.model.TicketStatus;
 import helpdesk.model.User;
 import helpdesk.repository.TicketRepository;
 import helpdesk.service.ConsoleNotificationService;
+import helpdesk.service.EmailNotificationService;
 import helpdesk.service.NotificationService;
+import helpdesk.service.TelegramNotificationService;
 import helpdesk.service.TicketService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class Main {
     public static void main(String[] args) {
@@ -119,10 +124,70 @@ public class Main {
         }
 
 
+        System.out.println("\n=== ПРОВЕРКА УВЕДОМЛЕНИЙ ===");
+
+        Ticket emailTicket = new Ticket(
+            3,
+            "Не работает электронная почта",
+            "Письма не отправляются"
+        );
+
+        NotificationService emailService = new EmailNotificationService();
+
+        TicketService emailTicketService = new TicketService(emailService);
+
+        emailTicketService.startTicket(emailTicket);
+
+        Ticket telegramTicket = new Ticket(
+            4,
+            "Не работает принтер",
+            "Принтер не отвечает"
+        );
+
+        NotificationService telegramService = new TelegramNotificationService();
+
+        TicketService telegramTicketService = new TicketService(telegramService);
+
+        telegramTicketService.startTicket(telegramTicket);
+
+
         TicketRepository ticketRepository = new TicketRepository();
 
         ticketRepository.add(ticket);
         ticketRepository.add(cancelledTicket);
+        ticketRepository.add(emailTicket);
+        ticketRepository.add(telegramTicket);
+
+
+        System.out.println("\n=== ПОИСК ПО СТАТУСУ ===");
+
+        for (Ticket foundTicket : ticketRepository.findByStatus(TicketStatus.IN_PROGRESS)) {
+            System.out.println(foundTicket);
+        }
+
+
+        System.out.println("\n=== ПОИСК ПО ID ===");
+
+        Optional<Ticket> foundTicket = ticketRepository.findById(2);
+
+        if (foundTicket.isPresent()) {
+            System.out.println(
+                "Заявка найдена: " + foundTicket.get()
+            );
+        } else {
+            System.out.println("Заявка не найдена");
+        }
+
+
+        System.out.println("\n=== СТАТИСТИКА ЗАЯВОК ===");
+
+        for (Map.Entry<TicketStatus, Integer> entry : ticketRepository.getStatistics().entrySet()) {
+
+            System.out.println(
+                entry.getKey() + ": " + entry.getValue()
+            );
+        }
+
 
         System.out.println("\nПолный список заявок:");
 

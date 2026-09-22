@@ -1,9 +1,13 @@
 package helpdesk.repository;
 
 import helpdesk.model.Ticket;
+import helpdesk.model.TicketStatus;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class TicketRepository {
     private final List<Ticket> tickets = new ArrayList<>();
@@ -14,5 +18,46 @@ public class TicketRepository {
 
     public List<Ticket> findAll() {
         return new ArrayList<>(tickets);
+    }
+
+    public List<Ticket> findByStatus(TicketStatus status) {
+        List<Ticket> result = new ArrayList<>();
+
+        for (Ticket ticket : tickets) {
+            if (ticket.getStatus() == status) {
+                result.add(ticket);
+            }
+        }
+
+        return result;
+    }
+
+    public Optional<Ticket> findById(long id) {
+        for (Ticket ticket : tickets) {
+            if (ticket.getId() == id) {
+                return Optional.of(ticket);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    public Map<TicketStatus, Integer> getStatistics() {
+        Map<TicketStatus, Integer> statistics = new EnumMap<>(TicketStatus.class);
+
+        for (TicketStatus status : TicketStatus.values()) {
+            statistics.put(status, 0);
+        }
+
+        for (Ticket ticket : tickets) {
+            TicketStatus status = ticket.getStatus();
+
+            statistics.put(
+                status,
+                statistics.get(status) + 1
+            );
+        }
+
+        return statistics;
     }
 }
