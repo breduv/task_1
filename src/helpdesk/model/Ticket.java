@@ -2,6 +2,8 @@ package helpdesk.model;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Ticket {
     private long id;
@@ -9,19 +11,25 @@ public class Ticket {
     private String description;
     private TicketStatus status;
     private final LocalDateTime createdAt;
+    private final TicketPriority priority;
+    private final LocalDateTime deadline;
+    private final List<StatusHistoryEntry> statusHistory = new ArrayList<>();
 
-    public Ticket(long id, String title, String description) {
+    public Ticket(long id, String title, String description, TicketPriority priority) {
+
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException(
-                "Название заявки не может быть пустым"
+                 "Название заявки не может быть пустым"
             );
         }
 
         this.id = id;
         this.title = title.trim();
         this.description = description;
+        this.priority = priority;
         this.status = TicketStatus.NEW;
         this.createdAt = LocalDateTime.now();
+        this.deadline = calculateDeadline();
     }
 
     public long getId() {
@@ -52,7 +60,7 @@ public class Ticket {
             return;
         }
 
-        status = TicketStatus.IN_PROGRESS;
+        changeStatus(TicketStatus.IN_PROGRESS);
     }
 
     public void resolve() {
@@ -63,7 +71,7 @@ public class Ticket {
             return;
         }
 
-        status = TicketStatus.RESOLVED;
+        changeStatus(TicketStatus.RESOLVED);
     }
 
     public void close() {
@@ -74,7 +82,7 @@ public class Ticket {
             return;
         }
 
-        status = TicketStatus.CLOSED;
+        changeStatus(TicketStatus.CLOSED);
     }
 
     public void cancel() {
@@ -85,13 +93,41 @@ public class Ticket {
             return;
         }
 
-        status = TicketStatus.CANCELLED;
+        changeStatus(TicketStatus.CANCELLED);
     }
 
     @Override
     public String toString() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
-        
-        return "#" + id + " " + title + " | " + status + " | создана: " + createdAt.format(formatter);
+
+        return "#" + id + " " + title + " | приоритет: " + priority + " | статус: " + status + " | создана: " + createdAt.format(formatter) + " | срок: " + deadline.format(formatter);
+    }
+
+    private LocalDateTime calculateDeadline() {
+        return switch (priority) {
+            case CRITICAL -> createdAt.plusMinutes(30);
+            case HIGH -> createdAt.plusHours(2);
+            case MEDIUM -> createdAt.plusHours(8);
+            case LOW -> createdAt.plusHours(24);
+        };
+    }
+
+    public TicketPriority getPriority() {
+        return priority;
+    }
+
+    public LocalDateTime getDeadline() {
+        return deadline;
+    }
+
+    private void changeStatus(TicketStatus newStatus) {
+        StatusHistoryEntry entry = new StatusHistoryEntry(status, newStatus);
+
+        statusHistory.add(entry);
+        status = newStatus;
+    }
+
+    public List<StatusHistoryEntry> getStatusHistory() {
+        return List.copyOf(statusHistory);
     }
 }

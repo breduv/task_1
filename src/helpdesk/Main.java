@@ -2,8 +2,10 @@ package helpdesk;
 
 import helpdesk.model.Administrator;
 import helpdesk.model.Customer;
+import helpdesk.model.StatusHistoryEntry;
 import helpdesk.model.SupportAgent;
 import helpdesk.model.Ticket;
+import helpdesk.model.TicketPriority;
 import helpdesk.model.TicketStatus;
 import helpdesk.model.User;
 import helpdesk.repository.TicketRepository;
@@ -13,6 +15,7 @@ import helpdesk.service.NotificationService;
 import helpdesk.service.TelegramNotificationService;
 import helpdesk.service.TicketService;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +58,8 @@ public class Main {
         Ticket ticket = new Ticket(
                 1,
                 "Не работает Wi-Fi",
-                "Компьютер не подключается к беспроводной сети"
+                "Компьютер не подключается к беспроводной сети",
+                TicketPriority.HIGH
         );
 
         System.out.println("\nКлиент: " + customer.getName());
@@ -83,7 +87,8 @@ public class Main {
         Ticket cancelledTicket = new Ticket(
                 2,
                 "Не работает принтер",
-                "Принтер не отвечает"
+                "Принтер не отвечает",
+                TicketPriority.MEDIUM
         );
 
         System.out.println(
@@ -111,7 +116,8 @@ public class Main {
             Ticket invalidTicket = new Ticket(
                 3,
                 "   ",
-                "Описание заявки"
+                "Описание заявки",
+                TicketPriority.LOW
             );
 
             System.out.println(
@@ -129,7 +135,8 @@ public class Main {
         Ticket emailTicket = new Ticket(
             3,
             "Не работает электронная почта",
-            "Письма не отправляются"
+            "Письма не отправляются",
+            TicketPriority.CRITICAL
         );
 
         NotificationService emailService = new EmailNotificationService();
@@ -141,7 +148,8 @@ public class Main {
         Ticket telegramTicket = new Ticket(
             4,
             "Не работает принтер",
-            "Принтер не отвечает"
+            "Принтер не отвечает",
+            TicketPriority.LOW
         );
 
         NotificationService telegramService = new TelegramNotificationService();
@@ -195,6 +203,30 @@ public class Main {
             System.out.println(
                 savedTicket.toString()
             );
+        }
+
+
+        DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+
+        System.out.println("История статусов первой заявки:");
+
+        for (StatusHistoryEntry entry : ticket.getStatusHistory()) {
+            System.out.println(
+                entry.getOldStatus() + " -> " + entry.getNewStatus() + " | " + entry.getChangedAt().format(formatter)
+            );
+        }
+
+        System.out.println("\nПросроченные заявки:");
+
+        List<Ticket> overdueTickets = ticketRepository.findOverdue();
+
+        if (overdueTickets.isEmpty()) {
+            System.out.println("Просроченных заявок нет");
+        } else {
+            for (Ticket overdueTicket : overdueTickets) {
+                System.out.println(overdueTicket);
+            }
         }
     }
 }

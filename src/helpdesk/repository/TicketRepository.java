@@ -3,6 +3,7 @@ package helpdesk.repository;
 import helpdesk.model.Ticket;
 import helpdesk.model.TicketStatus;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -59,5 +60,22 @@ public class TicketRepository {
         }
 
         return statistics;
+    }
+
+    public List<Ticket> findOverdue() {
+        List<Ticket> overdueTickets = new ArrayList<>();
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        for (Ticket ticket : tickets) {
+            boolean deadlineExpired = currentTime.isAfter(ticket.getDeadline());
+
+            boolean ticketNotFinished = ticket.getStatus() != TicketStatus.RESOLVED && ticket.getStatus() != TicketStatus.CLOSED;
+
+            if (deadlineExpired && ticketNotFinished) {
+                overdueTickets.add(ticket);
+            }
+        }
+
+        return overdueTickets;
     }
 }
