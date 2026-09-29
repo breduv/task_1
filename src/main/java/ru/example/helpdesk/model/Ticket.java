@@ -3,7 +3,7 @@ package ru.example.helpdesk.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/** Данные одной заявки; после чтения из БД поля заполняет JdbcTicketRepository. */
+// Данные одной заявки; после чтения из БД поля заполняет JdbcTicketRepository.
 public class Ticket {
     private Long id;
     private String title;
@@ -18,7 +18,7 @@ public class Ticket {
     private LocalDateTime closedAt;
     private LocalDateTime deadline;
 
-    /** Пустой конструктор нужен, чтобы по очереди заполнить поля из ResultSet. */
+    // Пустой конструктор нужен, чтобы по очереди заполнить поля из ResultSet.
     public Ticket() {
     }
 
@@ -47,7 +47,7 @@ public class Ticket {
     public void setTitle(String title) { this.title = title; }
     public void setDescription(String description) { this.description = description; }
     public void setStatus(TicketStatus status) { this.status = status; }
-    /** При смене приоритета пересчитывает срок, если дата создания уже известна. */
+    // При смене приоритета пересчитывает срок, если дата создания уже известна.
     public void setPriority(TicketPriority priority) {
         this.priority = priority;
         if (createdAt != null && priority != null) this.deadline = calculateDeadline();
@@ -58,7 +58,7 @@ public class Ticket {
     public void setAssigneeId(Long assigneeId) { this.assigneeId = assigneeId; }
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-    /** После получения даты из БД рассчитывает срок с учётом приоритета. */
+    // После получения даты из БД рассчитывает срок с учётом приоритета.
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
         if (createdAt != null && priority != null) this.deadline = calculateDeadline();
@@ -68,7 +68,7 @@ public class Ticket {
     public LocalDateTime getClosedAt() { return closedAt; }
     public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
 
-    /** Формирует короткую строку заявки для консольного вывода. */
+    // Формирует короткую строку заявки для консольного вывода.
     @Override
     public String toString() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
@@ -78,7 +78,7 @@ public class Ticket {
                 + " | срок: " + (deadline == null ? "—" : deadline.format(formatter));
     }
 
-    /** Вычисляет срок из даты создания по правилам приоритетов первой работы. */
+    // Вычисляет срок из даты создания по правилам приоритетов первой работы.
     private LocalDateTime calculateDeadline() {
         return switch (priority) {
             case CRITICAL -> createdAt.plusMinutes(30);

@@ -6,22 +6,22 @@ import ru.example.helpdesk.model.Ticket;
 import ru.example.helpdesk.model.TicketStatus;
 
 public interface TicketRepository {
-    /** Создаёт заявку и заполняет её ID, выданный PostgreSQL. */
+    // Создаёт заявку и заполняет её ID, выданный PostgreSQL.
     Ticket save(Ticket ticket);
-    /** Ищет заявку по ID; отсутствие выражается через Optional.empty(). */
+    // Ищет заявку по ID; отсутствие выражается через Optional.empty().
     Optional<Ticket> findById(long id);
-    /** Возвращает все заявки по возрастанию ID. */
+    // Возвращает все заявки по возрастанию ID.
     List<Ticket> findAll();
-    /** Отбирает заявки с указанным статусом. */
+    // Отбирает заявки с указанным статусом.
     List<Ticket> findByStatus(TicketStatus status);
-    /** Возвращает незакрытые заявки с истёкшим расчётным сроком. */
+    // Возвращает незакрытые заявки с истёкшим расчётным сроком.
     List<Ticket> findOverdue();
-    /** Обновляет текст, приоритет и категорию без смены статуса. */
+    // Обновляет текст, приоритет и категорию без смены статуса.
     void update(Ticket ticket);
-    /** Удаляет заявку; результат показывает, была ли найдена строка. */
+    // Удаляет заявку; результат показывает, была ли найдена строка.
     boolean deleteById(long id);
-    /** Меняет статус и записывает историю в одной транзакции. */
+    // Меняет статус и записывает историю в одной транзакции.
     void changeStatus(long ticketId, TicketStatus newStatus, long changedByUserId);
-    /** Назначает исполнителя и переводит новую заявку в работу. */
+    // Назначает исполнителя и переводит новую заявку в работу.
     void assignTicket(long ticketId, long supportAgentId);
 }

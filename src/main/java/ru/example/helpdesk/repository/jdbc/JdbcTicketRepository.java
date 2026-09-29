@@ -19,7 +19,7 @@ import ru.example.helpdesk.model.TicketStatusHistory;
 import ru.example.helpdesk.repository.TicketRepository;
 
 public class JdbcTicketRepository implements TicketRepository {
-    /** INSERT возвращает ID и даты, которые PostgreSQL создал для новой заявки. */
+    // INSERT возвращает ID и даты, которые PostgreSQL создал для новой заявки.
     @Override
     public Ticket save(Ticket ticket) {
         String sql = """
@@ -49,7 +49,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Читает одну заявку; ResultSet преобразуется в объект методом mapTicket. */
+    // Читает одну заявку; ResultSet преобразуется в объект методом mapTicket.
     @Override
     public Optional<Ticket> findById(long id) {
         String sql = "SELECT * FROM tickets WHERE id = ?";
@@ -64,20 +64,20 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Читает все заявки в порядке их ID. */
+    // Читает все заявки в порядке их ID.
     @Override
     public List<Ticket> findAll() {
         return list("SELECT * FROM tickets ORDER BY id", null);
     }
 
-    /** Подставляет статус как параметр SQL и сортирует подходящие заявки. */
+    // Подставляет статус как параметр SQL и сортирует подходящие заявки.
     @Override
     public List<Ticket> findByStatus(TicketStatus status) {
         return list("SELECT * FROM tickets WHERE status = ?::ticket_status ORDER BY created_at DESC",
                 status);
     }
 
-    /** Ищет активные заявки, чей срок истёк с учётом приоритета. */
+    // Ищет активные заявки, чей срок истёк с учётом приоритета.
     @Override
     public List<Ticket> findOverdue() {
         String sql = """
@@ -94,7 +94,7 @@ public class JdbcTicketRepository implements TicketRepository {
         return list(sql, null);
     }
 
-    /** Общий код чтения списка заявок для запросов с фильтром и без него. */
+    // Общий код чтения списка заявок для запросов с фильтром и без него.
     private List<Ticket> list(String sql, TicketStatus status) {
         List<Ticket> result = new ArrayList<>();
         try (Connection connection = DatabaseConfig.getConnection();
@@ -109,7 +109,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Обновляет изменяемые поля заявки и её updated_at, не трогая статус. */
+    // Обновляет изменяемые поля заявки и её updated_at, не трогая статус.
     @Override
     public void update(Ticket ticket) {
         if (ticket.getId() == null) throw new IllegalArgumentException("У заявки нет id");
@@ -134,7 +134,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Удаляет заявку по ID и сообщает, была ли строка удалена. */
+    // Удаляет заявку по ID и сообщает, была ли строка удалена.
     @Override
     public boolean deleteById(long id) {
         try (Connection connection = DatabaseConfig.getConnection();
@@ -146,7 +146,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** В одной транзакции проверяет переход, меняет статус и пишет историю. */
+    // В одной транзакции проверяет переход, меняет статус и пишет историю.
     @Override
     public void changeStatus(long ticketId, TicketStatus newStatus, long changedByUserId) {
         String updateSql = """
@@ -179,7 +179,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Проверяет роль исполнителя и атомарно назначает его заявке. */
+    // Проверяет роль исполнителя и атомарно назначает его заявке.
     @Override
     public void assignTicket(long ticketId, long supportAgentId) {
         String updateSql = """
@@ -220,7 +220,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Читает статус с FOR UPDATE и блокирует заявку до конца транзакции. */
+    // Читает статус с FOR UPDATE и блокирует заявку до конца транзакции.
     private TicketStatus lockStatus(Connection connection, long ticketId) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT status FROM tickets WHERE id = ? FOR UPDATE")) {
@@ -232,7 +232,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Записывает переход статуса через то же соединение, что и основной UPDATE. */
+    // Записывает переход статуса через то же соединение, что и основной UPDATE.
     private void insertHistory(Connection connection, long ticketId, TicketStatus oldStatus,
                                TicketStatus newStatus, long changedByUserId) throws SQLException {
         String sql = """
@@ -248,7 +248,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Разрешает только переходы статусов, перечисленные в методичке. */
+    // Разрешает только переходы статусов, перечисленные в методичке.
     private void validateTransition(TicketStatus oldStatus, TicketStatus newStatus) {
         boolean allowed = switch (oldStatus) {
             case NEW -> newStatus == TicketStatus.IN_PROGRESS || newStatus == TicketStatus.CANCELLED;
@@ -259,7 +259,7 @@ public class JdbcTicketRepository implements TicketRepository {
         if (!allowed) throw new IllegalStateException("Недопустимый переход: " + oldStatus + " -> " + newStatus);
     }
 
-    /** Откатывает транзакцию и сохраняет ошибку отката как дополнительную причину. */
+    // Откатывает транзакцию и сохраняет ошибку отката как дополнительную причину.
     private void rollback(Connection connection, Exception cause) {
         try {
             connection.rollback();
@@ -268,7 +268,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Возвращает хронологию переходов статуса конкретной заявки. */
+    // Возвращает хронологию переходов статуса конкретной заявки.
     public List<TicketStatusHistory> findStatusHistory(long ticketId) {
         String sql = """
                 SELECT id, ticket_id, old_status, new_status, changed_by_id, changed_at
@@ -296,7 +296,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** JOIN заменяет числовые ID клиента, исполнителя и категории их именами. */
+    // JOIN заменяет числовые ID клиента, исполнителя и категории их именами.
     public List<TicketDetails> findDetails() {
         String sql = """
                 SELECT t.id, t.title, t.status, t.priority, c.name AS category_name,
@@ -324,7 +324,7 @@ public class JdbcTicketRepository implements TicketRepository {
         }
     }
 
-    /** Собирает Ticket из текущей строки ResultSet, включая nullable-поля. */
+    // Собирает Ticket из текущей строки ResultSet, включая nullable-поля.
     private Ticket mapTicket(ResultSet rs) throws SQLException {
         Ticket ticket = new Ticket();
         ticket.setId(rs.getLong("id"));
@@ -344,7 +344,7 @@ public class JdbcTicketRepository implements TicketRepository {
         return ticket;
     }
 
-    /** Передаёт в SQL либо BIGINT, либо настоящий NULL вместо отсутствующего ID. */
+    // Передаёт в SQL либо BIGINT, либо настоящий NULL вместо отсутствующего ID.
     private void setNullableLong(PreparedStatement ps, int index, Long value) throws SQLException {
         if (value == null) ps.setNull(index, Types.BIGINT);
         else ps.setLong(index, value);

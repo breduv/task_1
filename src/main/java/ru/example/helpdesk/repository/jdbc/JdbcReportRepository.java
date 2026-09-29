@@ -10,12 +10,12 @@ import java.util.Map;
 import ru.example.helpdesk.config.DatabaseConfig;
 
 public class JdbcReportRepository {
-    /** Считает заявки в каждом статусе. */
+    // Считает заявки в каждом статусе.
     public Map<String, Long> countByStatus() {
         return count("SELECT status::text AS label, COUNT(*) AS count FROM tickets GROUP BY status ORDER BY status");
     }
 
-    /** Считает заявки в каждой категории, включая категории без заявок. */
+    // Считает заявки в каждой категории, включая категории без заявок.
     public Map<String, Long> countByCategory() {
         return count("""
                 SELECT c.name AS label, COUNT(t.id) AS count
@@ -24,7 +24,7 @@ public class JdbcReportRepository {
                 """);
     }
 
-    /** Показывает число активных заявок у каждого сотрудника поддержки. */
+    // Показывает число активных заявок у каждого сотрудника поддержки.
     public Map<String, Long> activeByAgent() {
         return count("""
                 SELECT u.name AS label,
@@ -35,7 +35,7 @@ public class JdbcReportRepository {
                 """);
     }
 
-    /** Выполняет отчётный SELECT и собирает пары «название — количество». */
+    // Выполняет отчётный SELECT и собирает пары «название — количество».
     private Map<String, Long> count(String sql) {
         Map<String, Long> result = new LinkedHashMap<>();
         try (Connection connection = DatabaseConfig.getConnection();

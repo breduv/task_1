@@ -15,7 +15,7 @@ public class TicketService {
     private final UserRepository userRepository;
     private final JdbcCatalogRepository catalogRepository;
 
-    /** Получает репозитории и способ отправки уведомлений через конструктор. */
+    // Получает репозитории и способ отправки уведомлений через конструктор.
     public TicketService(TicketRepository ticketRepository, UserRepository userRepository,
                          JdbcCatalogRepository catalogRepository, NotificationService notificationService) {
         this.ticketRepository = ticketRepository;
@@ -24,7 +24,7 @@ public class TicketService {
         this.notificationService = notificationService;
     }
 
-    /** Проверяет данные и сохраняет новую заявку со статусом NEW. */
+    // Проверяет данные и сохраняет новую заявку со статусом NEW.
     public Ticket createTicket(String title, String description, TicketPriority priority,
                                long customerId, Long categoryId) {
         if (title == null || title.isBlank() || title.trim().length() < 3)
@@ -49,7 +49,7 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
-    /** Назначает активного сотрудника поддержки и сообщает об этом. */
+    // Назначает активного сотрудника поддержки и сообщает об этом.
     public void assignTicket(long ticketId, long supportAgentId) {
         User agent = userRepository.findById(supportAgentId)
                 .orElseThrow(() -> new IllegalArgumentException("Сотрудник не найден: " + supportAgentId));
@@ -59,7 +59,7 @@ public class TicketService {
         notificationService.send("Заявка №" + ticketId + " назначена сотруднику " + agent.getName());
     }
 
-    /** Проверяет автора изменения и передаёт смену статуса репозиторию. */
+    // Проверяет автора изменения и передаёт смену статуса репозиторию.
     public void changeStatus(long ticketId, TicketStatus newStatus, long changedByUserId) {
         User actor = userRepository.findById(changedByUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + changedByUserId));
@@ -69,7 +69,7 @@ public class TicketService {
     }
 
 
-    /** Отменяет заявку через общую проверяемую операцию смены статуса. */
+    // Отменяет заявку через общую проверяемую операцию смены статуса.
     public void cancelTicket(long ticketId, long changedByUserId) {
         changeStatus(ticketId, TicketStatus.CANCELLED, changedByUserId);
     }

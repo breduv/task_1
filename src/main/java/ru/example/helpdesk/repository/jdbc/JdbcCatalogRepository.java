@@ -14,7 +14,7 @@ import ru.example.helpdesk.model.Department;
 import ru.example.helpdesk.model.TicketPriority;
 
 public class JdbcCatalogRepository {
-    /** Загружает все категории для выбора категории новой заявки. */
+    // Загружает все категории для выбора категории новой заявки.
     public List<Category> findAllCategories() {
         List<Category> result = new ArrayList<>();
         try (Connection connection = DatabaseConfig.getConnection();
@@ -27,7 +27,7 @@ public class JdbcCatalogRepository {
         }
     }
 
-    /** Ищет категорию по ID, например для проверки её активности. */
+    // Ищет категорию по ID, например для проверки её активности.
     public Optional<Category> findCategoryById(long id) {
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement ps = connection.prepareStatement("SELECT * FROM categories WHERE id = ?")) {
@@ -40,7 +40,7 @@ public class JdbcCatalogRepository {
         }
     }
 
-    /** Загружает список подразделений службы поддержки. */
+    // Загружает список подразделений службы поддержки.
     public List<Department> findAllDepartments() {
         List<Department> result = new ArrayList<>();
         try (Connection connection = DatabaseConfig.getConnection();
@@ -53,7 +53,7 @@ public class JdbcCatalogRepository {
         }
     }
 
-    /** Ищет одно подразделение по ID. */
+    // Ищет одно подразделение по ID.
     public Optional<Department> findDepartmentById(long id) {
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement ps = connection.prepareStatement("SELECT * FROM departments WHERE id = ?")) {
@@ -66,13 +66,13 @@ public class JdbcCatalogRepository {
         }
     }
 
-    /** Преобразует строку categories в объект Category. */
+    // Преобразует строку categories в объект Category.
     private Category mapCategory(ResultSet rs) throws SQLException {
         return new Category(rs.getLong("id"), rs.getString("name"), rs.getString("description"),
                 TicketPriority.valueOf(rs.getString("default_priority")), rs.getBoolean("active"));
     }
 
-    /** Преобразует строку departments в объект Department. */
+    // Преобразует строку departments в объект Department.
     private Department mapDepartment(ResultSet rs) throws SQLException {
         return new Department(rs.getLong("id"), rs.getString("name"), rs.getString("description"),
                 rs.getTimestamp("created_at").toLocalDateTime());

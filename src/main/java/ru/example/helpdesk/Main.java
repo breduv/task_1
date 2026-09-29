@@ -21,7 +21,7 @@ import ru.example.helpdesk.service.ConsoleNotificationService;
 import ru.example.helpdesk.service.TicketService;
 
 public class Main {
-    /** Запускает обязательный сценарий: от подключения к БД до проверки отчётов. */
+    // Запускает обязательный сценарий: от подключения к БД до проверки отчётов.
     public static void main(String[] args) {
         JdbcTicketRepository tickets = new JdbcTicketRepository();
         JdbcUserRepository users = new JdbcUserRepository();
@@ -89,7 +89,7 @@ public class Main {
                 + " появится в списке сохранённых заявок.");
     }
 
-    /** Повторно читает из БД заявку, её комментарии и историю изменений статуса. */
+    // Повторно читает из БД заявку, её комментарии и историю изменений статуса.
     private static void showTicket(JdbcTicketRepository tickets, JdbcCommentRepository comments, long ticketId) {
         System.out.println("Заявка из БД: " + tickets.findById(ticketId).orElseThrow());
         System.out.println("Комментарии:");

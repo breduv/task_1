@@ -13,7 +13,7 @@ import ru.example.helpdesk.model.UserRole;
 import ru.example.helpdesk.repository.CommentRepository;
 
 public class JdbcCommentRepository implements CommentRepository {
-    /** Добавляет комментарий и возвращает его ID и дату создания из БД. */
+    // Добавляет комментарий и возвращает его ID и дату создания из БД.
     @Override
     public TicketComment add(TicketComment comment) {
         String sql = """
@@ -37,7 +37,7 @@ public class JdbcCommentRepository implements CommentRepository {
         }
     }
 
-    /** Читает комментарии заявки с именем и ролью каждого автора. */
+    // Читает комментарии заявки с именем и ролью каждого автора.
     @Override
     public List<TicketComment> findByTicketId(long ticketId) {
         String sql = """

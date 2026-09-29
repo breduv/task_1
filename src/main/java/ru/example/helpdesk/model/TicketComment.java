@@ -2,7 +2,7 @@ package ru.example.helpdesk.model;
 
 import java.time.LocalDateTime;
 
-/** Текст комментария и данные автора, полученные из JOIN-запроса. */
+// Текст комментария и данные автора, полученные из JOIN-запроса.
 public class TicketComment {
     private Long id;
     private long ticketId;
@@ -13,7 +13,7 @@ public class TicketComment {
     private String authorName;
     private UserRole authorRole;
 
-    /** Создаёт комментарий; internal=true означает заметку для сотрудников. */
+    // Создаёт комментарий; internal=true означает заметку для сотрудников.
     public TicketComment(long ticketId, long authorId, String text, boolean internal) {
         this.ticketId = ticketId;
         this.authorId = authorId;
