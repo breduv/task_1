@@ -2,242 +2,102 @@ package ru.example.helpdesk;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 import ru.example.helpdesk.config.DatabaseConfig;
-import ru.example.helpdesk.model.Administrator;
-import ru.example.helpdesk.model.Customer;
-import ru.example.helpdesk.model.StatusHistoryEntry;
-import ru.example.helpdesk.model.SupportAgent;
+import ru.example.helpdesk.model.Category;
 import ru.example.helpdesk.model.Ticket;
-import ru.example.helpdesk.model.TicketPriority;
+import ru.example.helpdesk.model.TicketComment;
+import ru.example.helpdesk.model.TicketDetails;
 import ru.example.helpdesk.model.TicketStatus;
 import ru.example.helpdesk.model.User;
-import ru.example.helpdesk.repository.TicketRepository;
+import ru.example.helpdesk.model.UserRole;
+import ru.example.helpdesk.repository.jdbc.JdbcCatalogRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcCommentRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcReportRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcTicketRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcUserRepository;
 import ru.example.helpdesk.service.ConsoleNotificationService;
-import ru.example.helpdesk.service.EmailNotificationService;
-import ru.example.helpdesk.service.NotificationService;
-import ru.example.helpdesk.service.TelegramNotificationService;
 import ru.example.helpdesk.service.TicketService;
 
 public class Main {
+    /** Запускает обязательный сценарий: от подключения к БД до проверки отчётов. */
     public static void main(String[] args) {
+        JdbcTicketRepository tickets = new JdbcTicketRepository();
+        JdbcUserRepository users = new JdbcUserRepository();
+        JdbcCatalogRepository catalog = new JdbcCatalogRepository();
+        JdbcCommentRepository comments = new JdbcCommentRepository();
+        JdbcReportRepository reports = new JdbcReportRepository();
+        TicketService service = new TicketService(tickets, users, catalog, new ConsoleNotificationService());
+
         try (Connection connection = DatabaseConfig.getConnection()) {
             System.out.println("Подключение к PostgreSQL успешно");
             System.out.println("AutoCommit = " + connection.getAutoCommit());
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new IllegalStateException("Не удалось подключиться к PostgreSQL", e);
         }
 
+        // Список из БД показывает, что заявки переживают перезапуск Java-программы.
+        System.out.println("Заявки, сохранённые до запуска программы:");
+        List<Ticket> savedTickets = tickets.findAll();
+        if (savedTickets.isEmpty()) System.out.println("  Пока нет заявок");
+        else savedTickets.forEach(ticket -> System.out.println("  " + ticket));
 
-        System.out.println("=== HELP DESK ===");
+        // Пункт 36: полный сценарий от поиска клиента до повторного чтения заявки.
+        User customer = users.findByEmail("anna@example.org")
+                .orElseThrow(() -> new IllegalStateException("Нет тестового клиента anna@example.org"));
+        if (customer.getRole() != UserRole.CUSTOMER)
+            throw new IllegalStateException("Найденный пользователь не является клиентом");
+        System.out.println("Клиент: " + customer.getName());
 
-        Customer customer = new Customer(
-                1,
-                "Анна Петрова",
-                "anna@mail.ru"
-        );
+        List<Category> categories = catalog.findAllCategories();
+        System.out.println("Категории:");
+        categories.forEach(category -> System.out.println("  #" + category.id() + " " + category.name()));
+        Category category = categories.stream().filter(Category::active).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Нет активной категории"));
 
-        SupportAgent supportAgent = new SupportAgent(
-                2,
-                "Сергей Иванов",
-                "sergey@helpdesk.ru"
-        );
+        Ticket created = service.createTicket("Проверка JDBC Help Desk",
+                "Тестовая заявка для обязательного сценария практической работы №2",
+                category.defaultPriority(), customer.getId(), category.id());
+        long ticketId = created.getId();
+        System.out.println("Создана заявка PostgreSQL с id = " + ticketId);
+        System.out.println("findById: " + tickets.findById(ticketId).orElseThrow());
 
-        Administrator administrator = new Administrator(
-                3,
-                "Олег Смирнов",
-                "admin@helpdesk.ru"
-        );
+        // После создания заявки выполняем назначение, комментарии и переходы статусов.
+        User agent = users.findAll().stream()
+                .filter(user -> user.getRole() == UserRole.SUPPORT_AGENT && user.isActive())
+                .findFirst().orElseThrow(() -> new IllegalStateException("Нет активного сотрудника поддержки"));
+        service.assignTicket(ticketId, agent.getId());
+        comments.add(new TicketComment(ticketId, customer.getId(),
+                "Прошу проверить обращение", false));
+        service.changeStatus(ticketId, TicketStatus.RESOLVED, agent.getId());
+        comments.add(new TicketComment(ticketId, agent.getId(),
+                "Решение проверено сотрудником", true));
+        service.changeStatus(ticketId, TicketStatus.CLOSED, agent.getId());
 
-        List<User> users = new ArrayList<>();
+        showTicket(tickets, comments, ticketId);
+        System.out.println("JOIN, карточка заявки:");
+        TicketDetails details = tickets.findDetails().stream()
+                .filter(item -> item.id() == ticketId).findFirst().orElseThrow();
+        System.out.println(details);
+        System.out.println("Отчёт по статусам: " + reports.countByStatus());
+        System.out.println("Отчёт по категориям: " + reports.countByCategory());
+        System.out.println("Нагрузка сотрудников: " + reports.activeByAgent());
+        System.out.println("Просроченные заявки:");
+        tickets.findOverdue().forEach(System.out::println);
+        System.out.println("При следующем запуске заявка #" + ticketId
+                + " появится в списке сохранённых заявок.");
+    }
 
-        users.add(customer);
-        users.add(supportAgent);
-        users.add(administrator);
-
-        System.out.println("\nПользователи:");
-
-        for (User user : users) {
-            user.performAction();
+    /** Повторно читает из БД заявку, её комментарии и историю изменений статуса. */
+    private static void showTicket(JdbcTicketRepository tickets, JdbcCommentRepository comments, long ticketId) {
+        System.out.println("Заявка из БД: " + tickets.findById(ticketId).orElseThrow());
+        System.out.println("Комментарии:");
+        for (TicketComment comment : comments.findByTicketId(ticketId)) {
+            System.out.println("  " + comment.getAuthorName() + " [" + comment.getAuthorRole() + "] "
+                    + (comment.isInternal() ? "(внутренний) " : "") + comment.getText());
         }
-
-        Ticket ticket = new Ticket(
-                1,
-                "Не работает Wi-Fi",
-                "Компьютер не подключается к беспроводной сети",
-                TicketPriority.HIGH
-        );
-
-        System.out.println("\nКлиент: " + customer.getName());
-
-        System.out.println(
-            "Заявка #" + ticket.getId() + ": " + ticket.getTitle() + " | " + ticket.getStatus()
-        );
-
-        NotificationService notificationService = new ConsoleNotificationService();
-
-        TicketService ticketService = new TicketService(notificationService);
-
-        ticketService.startTicket(ticket);
-        System.out.println("Статус: " + ticket.getStatus());
-
-        ticketService.resolveTicket(ticket);
-        System.out.println("Статус: " + ticket.getStatus());
-
-        ticketService.closeTicket(ticket);
-        System.out.println("Статус: " + ticket.getStatus());
-
-
-        System.out.println("\n=== ПРОВЕРКА ОТМЕНЫ ===");
-
-        Ticket cancelledTicket = new Ticket(
-                2,
-                "Не работает принтер",
-                "Принтер не отвечает",
-                TicketPriority.MEDIUM
-        );
-
-        System.out.println(
-                "Статус до отмены: " + cancelledTicket.getStatus()
-        );
-
-        cancelledTicket.cancel();
-
-        System.out.println(
-                "Статус после отмены: " + cancelledTicket.getStatus()
-        );
-
-        System.out.println("\nПопытка отменить закрытую заявку:");
-
-        ticket.cancel();
-
-        System.out.println(
-                "Статус закрытой заявки: " + ticket.getStatus()
-        );
-
-
-        System.out.println("\n=== ПРОВЕРКА НАЗВАНИЯ ===");
-
-        try {
-            Ticket invalidTicket = new Ticket(
-                3,
-                "   ",
-                "Описание заявки",
-                TicketPriority.LOW
-            );
-
-            System.out.println(
-                "Создана заявка: " + invalidTicket.getTitle()
-            );
-        } catch (IllegalArgumentException exception) {
-            System.out.println(
-                "Ошибка: " + exception.getMessage()
-            );
-        }
-
-
-        System.out.println("\n=== ПРОВЕРКА УВЕДОМЛЕНИЙ ===");
-
-        Ticket emailTicket = new Ticket(
-            3,
-            "Не работает электронная почта",
-            "Письма не отправляются",
-            TicketPriority.CRITICAL
-        );
-
-        NotificationService emailService = new EmailNotificationService();
-
-        TicketService emailTicketService = new TicketService(emailService);
-
-        emailTicketService.startTicket(emailTicket);
-
-        Ticket telegramTicket = new Ticket(
-            4,
-            "Не работает принтер",
-            "Принтер не отвечает",
-            TicketPriority.LOW
-        );
-
-        NotificationService telegramService = new TelegramNotificationService();
-
-        TicketService telegramTicketService = new TicketService(telegramService);
-
-        telegramTicketService.startTicket(telegramTicket);
-
-
-        TicketRepository ticketRepository = new TicketRepository();
-
-        ticketRepository.add(ticket);
-        ticketRepository.add(cancelledTicket);
-        ticketRepository.add(emailTicket);
-        ticketRepository.add(telegramTicket);
-
-
-        System.out.println("\n=== ПОИСК ПО СТАТУСУ ===");
-
-        for (Ticket foundTicket : ticketRepository.findByStatus(TicketStatus.IN_PROGRESS)) {
-            System.out.println(foundTicket);
-        }
-
-
-        System.out.println("\n=== ПОИСК ПО ID ===");
-
-        Optional<Ticket> foundTicket = ticketRepository.findById(2);
-
-        if (foundTicket.isPresent()) {
-            System.out.println(
-                "Заявка найдена: " + foundTicket.get()
-            );
-        } else {
-            System.out.println("Заявка не найдена");
-        }
-
-
-        System.out.println("\n=== СТАТИСТИКА ЗАЯВОК ===");
-
-        for (Map.Entry<TicketStatus, Integer> entry : ticketRepository.getStatistics().entrySet()) {
-
-            System.out.println(
-                entry.getKey() + ": " + entry.getValue()
-            );
-        }
-
-
-        System.out.println("\nПолный список заявок:");
-
-        for (Ticket savedTicket : ticketRepository.findAll()) {
-            System.out.println(
-                savedTicket.toString()
-            );
-        }
-
-
-        DateTimeFormatter formatter =
-        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
-
-        System.out.println("История статусов первой заявки:");
-
-        for (StatusHistoryEntry entry : ticket.getStatusHistory()) {
-            System.out.println(
-                entry.getOldStatus() + " -> " + entry.getNewStatus() + " | " + entry.getChangedAt().format(formatter)
-            );
-        }
-
-        System.out.println("\nПросроченные заявки:");
-
-        List<Ticket> overdueTickets = ticketRepository.findOverdue();
-
-        if (overdueTickets.isEmpty()) {
-            System.out.println("Просроченных заявок нет");
-        } else {
-            for (Ticket overdueTicket : overdueTickets) {
-                System.out.println(overdueTicket);
-            }
-        }
+        System.out.println("История статусов:");
+        tickets.findStatusHistory(ticketId).forEach(System.out::println);
     }
 }

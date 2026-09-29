@@ -2,9 +2,8 @@ package ru.example.helpdesk.model;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 
+/** Данные одной заявки; после чтения из БД поля заполняет JdbcTicketRepository. */
 public class Ticket {
     private Long id;
     private String title;
@@ -18,26 +17,12 @@ public class Ticket {
     private LocalDateTime updatedAt;
     private LocalDateTime closedAt;
     private LocalDateTime deadline;
-    private final List<StatusHistoryEntry> statusHistory = new ArrayList<>();
-    
 
-    public Ticket(Long id, String title, String description, TicketPriority priority) {
-
-        if (title == null || title.isBlank()) {
-            throw new IllegalArgumentException(
-                 "Название заявки не может быть пустым"
-            );
-        }
-
-        this.id = id;
-        this.title = title.trim();
-        this.description = description;
-        this.priority = priority;
-        this.status = TicketStatus.NEW;
-        this.createdAt = LocalDateTime.now();
-        this.deadline = calculateDeadline();
+    /** Пустой конструктор нужен, чтобы по очереди заполнить поля из ResultSet. */
+    public Ticket() {
     }
 
+    // Геттеры возвращают поля заявки, сеттеры заполняют их после INSERT или SELECT.
     public Long getId() {
         return id;
     }
@@ -58,57 +43,42 @@ public class Ticket {
         return createdAt;
     }
 
-    public void startProcessing() {
-        if (status != TicketStatus.NEW) {
-            System.out.println(
-                 "Ошибка: в работу можно взять только новую заявку"
-            );
-            return;
-        }
-
-        changeStatus(TicketStatus.IN_PROGRESS);
+    public void setId(Long id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setDescription(String description) { this.description = description; }
+    public void setStatus(TicketStatus status) { this.status = status; }
+    /** При смене приоритета пересчитывает срок, если дата создания уже известна. */
+    public void setPriority(TicketPriority priority) {
+        this.priority = priority;
+        if (createdAt != null && priority != null) this.deadline = calculateDeadline();
     }
-
-    public void resolve() {
-        if (status != TicketStatus.IN_PROGRESS) {
-            System.out.println(
-                "Ошибка: решить можно только заявку в работе"
-            );
-            return;
-        }
-
-        changeStatus(TicketStatus.RESOLVED);
+    public Long getCustomerId() { return customerId; }
+    public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public Long getAssigneeId() { return assigneeId; }
+    public void setAssigneeId(Long assigneeId) { this.assigneeId = assigneeId; }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+    /** После получения даты из БД рассчитывает срок с учётом приоритета. */
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+        if (createdAt != null && priority != null) this.deadline = calculateDeadline();
     }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
 
-    public void close() {
-        if (status != TicketStatus.RESOLVED) {
-            System.out.println(
-                "Ошибка: закрыть можно только решённую заявку"
-            );
-            return;
-        }
-
-        changeStatus(TicketStatus.CLOSED);
-    }
-
-    public void cancel() {
-        if (status == TicketStatus.CLOSED) {
-            System.out.println(
-                "Ошибка: закрытую заявку отменить нельзя"
-            );
-            return;
-        }
-
-        changeStatus(TicketStatus.CANCELLED);
-    }
-
+    /** Формирует короткую строку заявки для консольного вывода. */
     @Override
     public String toString() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
-        return "#" + id + " " + title + " | приоритет: " + priority + " | статус: " + status + " | создана: " + createdAt.format(formatter) + " | срок: " + deadline.format(formatter);
+        return "#" + id + " " + title + " | приоритет: " + priority + " | статус: " + status
+                + " | создана: " + (createdAt == null ? "—" : createdAt.format(formatter))
+                + " | срок: " + (deadline == null ? "—" : deadline.format(formatter));
     }
 
+    /** Вычисляет срок из даты создания по правилам приоритетов первой работы. */
     private LocalDateTime calculateDeadline() {
         return switch (priority) {
             case CRITICAL -> createdAt.plusMinutes(30);
@@ -126,14 +96,4 @@ public class Ticket {
         return deadline;
     }
 
-    private void changeStatus(TicketStatus newStatus) {
-        StatusHistoryEntry entry = new StatusHistoryEntry(status, newStatus);
-
-        statusHistory.add(entry);
-        status = newStatus;
-    }
-
-    public List<StatusHistoryEntry> getStatusHistory() {
-        return List.copyOf(statusHistory);
-    }
 }
