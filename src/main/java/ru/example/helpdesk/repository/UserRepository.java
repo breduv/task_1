@@ -5,12 +5,12 @@ import java.util.Optional;
 import ru.example.helpdesk.model.User;
 
 public interface UserRepository {
-    // Создаёт пользователя и заполняет ID, выданный PostgreSQL.
+    // Создаёт пользователя и заполняет ID, выданный PostgreSQL
     User save(User user);
-    // Ищет пользователя по ID.
+    // Ищет пользователя по ID
     Optional<User> findById(long id);
-    // Ищет пользователя по уникальному адресу электронной почты.
+    // Ищет пользователя по уникальному адресу электронной почты
     Optional<User> findByEmail(String email);
-    // Возвращает всех пользователей.
+    // Возвращает всех пользователей
     List<User> findAll();
 }

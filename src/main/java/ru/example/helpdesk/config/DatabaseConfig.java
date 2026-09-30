@@ -14,11 +14,11 @@ public final class DatabaseConfig {
     private static final String USER = System.getenv().getOrDefault("DB_USER", "helpdesk_app");
     private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "change_me_student_password");
 
-    // Не даёт создавать объект класса, содержащего только настройки подключения.
+    // Создавать объект этого класса не нужно, он хранит только настройки подключения
     private DatabaseConfig() {
     }
 
-    // Открывает новое JDBC-соединение; вызывающий код обязан его закрыть.
+    // Открывает соединение с PostgreSQL, которое потом нужно закрыть
     public static Connection getConnection() throws SQLException {
         if (PASSWORD == null || PASSWORD.isBlank()) {
             throw new IllegalStateException("Не задана переменная окружения DB_PASSWORD");

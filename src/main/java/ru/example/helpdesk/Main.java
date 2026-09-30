@@ -2,32 +2,41 @@ package ru.example.helpdesk;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.OptionalDouble;
 
 import ru.example.helpdesk.config.DatabaseConfig;
+import ru.example.helpdesk.model.AgentTicketStats;
 import ru.example.helpdesk.model.Category;
+import ru.example.helpdesk.model.SlaPolicy;
 import ru.example.helpdesk.model.Ticket;
 import ru.example.helpdesk.model.TicketComment;
 import ru.example.helpdesk.model.TicketDetails;
 import ru.example.helpdesk.model.TicketStatus;
+import ru.example.helpdesk.model.TicketStatusHistory;
 import ru.example.helpdesk.model.User;
 import ru.example.helpdesk.model.UserRole;
 import ru.example.helpdesk.repository.jdbc.JdbcCatalogRepository;
 import ru.example.helpdesk.repository.jdbc.JdbcCommentRepository;
 import ru.example.helpdesk.repository.jdbc.JdbcReportRepository;
+import ru.example.helpdesk.repository.jdbc.JdbcSlaPolicyRepository;
 import ru.example.helpdesk.repository.jdbc.JdbcTicketRepository;
 import ru.example.helpdesk.repository.jdbc.JdbcUserRepository;
 import ru.example.helpdesk.service.ConsoleNotificationService;
 import ru.example.helpdesk.service.TicketService;
 
 public class Main {
-    // Запускает обязательный сценарий: от подключения к БД до проверки отчётов.
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
+
+    // Запускает проверку работы приложения с базой данных
     public static void main(String[] args) {
         JdbcTicketRepository tickets = new JdbcTicketRepository();
         JdbcUserRepository users = new JdbcUserRepository();
         JdbcCatalogRepository catalog = new JdbcCatalogRepository();
         JdbcCommentRepository comments = new JdbcCommentRepository();
         JdbcReportRepository reports = new JdbcReportRepository();
+        JdbcSlaPolicyRepository slaPolicies = new JdbcSlaPolicyRepository();
         TicketService service = new TicketService(tickets, users, catalog, new ConsoleNotificationService());
 
         try (Connection connection = DatabaseConfig.getConnection()) {
@@ -37,33 +46,45 @@ public class Main {
             throw new IllegalStateException("Не удалось подключиться к PostgreSQL", e);
         }
 
-        // Список из БД показывает, что заявки переживают перезапуск Java-программы.
-        System.out.println("Заявки, сохранённые до запуска программы:");
+        // Сначала показываем заявки, которые уже хранятся в базе
+        System.out.println();
+        System.out.println("Сохранённые заявки:");
         List<Ticket> savedTickets = tickets.findAll();
         if (savedTickets.isEmpty()) System.out.println("  Пока нет заявок");
         else savedTickets.forEach(ticket -> System.out.println("  " + ticket));
 
-        // Пункт 36: полный сценарий от поиска клиента до повторного чтения заявки.
+        // Находим клиента и создаём новую заявку
+        System.out.println();
         User customer = users.findByEmail("anna@example.org")
                 .orElseThrow(() -> new IllegalStateException("Нет тестового клиента anna@example.org"));
         if (customer.getRole() != UserRole.CUSTOMER)
             throw new IllegalStateException("Найденный пользователь не является клиентом");
-        System.out.println("Клиент: " + customer.getName());
+        System.out.println("Клиент найденный по email: " + customer.getName());
 
+        System.out.println();
         List<Category> categories = catalog.findAllCategories();
         System.out.println("Категории:");
         categories.forEach(category -> System.out.println("  #" + category.id() + " " + category.name()));
         Category category = categories.stream().filter(Category::active).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Нет активной категории"));
 
-        Ticket created = service.createTicket("Проверка JDBC Help Desk",
-                "Тестовая заявка для обязательного сценария практической работы №2",
+        System.out.println();
+        System.out.println("Политики SLA:");
+        for (SlaPolicy policy : slaPolicies.findAll()) {
+            System.out.println("  " + policy.priority() + " | ответ: " + policy.responseMinutes()
+                    + " мин | решение: " + policy.resolveMinutes() + " мин");
+        }
+
+        Ticket created = service.createTicket("Снова WIFI не работает",
+                "СНОВА ВАЙ ФАЙ НЕ РАБОТАЕТ, ПОМОГИТЕ!",
                 category.defaultPriority(), customer.getId(), category.id());
         long ticketId = created.getId();
-        System.out.println("Создана заявка PostgreSQL с id = " + ticketId);
-        System.out.println("findById: " + tickets.findById(ticketId).orElseThrow());
+        System.out.println();
+        System.out.println("Создана заявка #" + ticketId);
+        System.out.println("  " + tickets.findById(ticketId).orElseThrow());
 
-        // После создания заявки выполняем назначение, комментарии и переходы статусов.
+        // Назначаем сотрудника, добавляем комментарии и меняем статусы
+        System.out.println();
         User agent = users.findAll().stream()
                 .filter(user -> user.getRole() == UserRole.SUPPORT_AGENT && user.isActive())
                 .findFirst().orElseThrow(() -> new IllegalStateException("Нет активного сотрудника поддержки"));
@@ -75,29 +96,63 @@ public class Main {
                 "Решение проверено сотрудником", true));
         service.changeStatus(ticketId, TicketStatus.CLOSED, agent.getId());
 
+        System.out.println();
         showTicket(tickets, comments, ticketId);
-        System.out.println("JOIN, карточка заявки:");
+
         TicketDetails details = tickets.findDetails().stream()
                 .filter(item -> item.id() == ticketId).findFirst().orElseThrow();
-        System.out.println(details);
-        System.out.println("Отчёт по статусам: " + reports.countByStatus());
-        System.out.println("Отчёт по категориям: " + reports.countByCategory());
-        System.out.println("Нагрузка сотрудников: " + reports.activeByAgent());
+        System.out.println();
+        System.out.println("Карточка заявки:");
+        System.out.println("  #" + details.id() + " " + details.title());
+        System.out.println("  Статус: " + details.status() + " | Приоритет: " + details.priority());
+        System.out.println("  Клиент: " + details.customerName()
+                + " | Исполнитель: " + details.assigneeName()
+                + " | Категория: " + details.categoryName());
+        System.out.println("  Создана: " + details.createdAt().format(DATE_FORMAT));
+
+        System.out.println();
+        System.out.println("Отчёты:");
+        System.out.println("  По статусам: " + reports.countByStatus());
+        System.out.println("  По категориям: " + reports.countByCategory());
+        System.out.println("  Нагрузка сотрудников: " + reports.activeByAgent());
+
+        System.out.println();
+        System.out.println("Статистика сотрудников:");
+        for (AgentTicketStats stats : reports.ticketCountsByAgent()) {
+            System.out.println("  " + stats.agentName() + " | активные: " + stats.active()
+                    + " | решённые: " + stats.resolved() + " | закрытые: " + stats.closed());
+        }
+
+        System.out.println();
+        System.out.println("Среднее время решения:");
+        OptionalDouble average = reports.averageResolutionMinutes();
+        System.out.println("  Все закрытые заявки: " + (average.isPresent()
+                ? String.format("%.4f мин", average.getAsDouble()) : "нет закрытых заявок"));
+        reports.averageResolutionMinutesByCategory().forEach((name, minutes) ->
+                System.out.println("  " + name + ": " + String.format("%.4f мин", minutes)));
+
+        System.out.println();
         System.out.println("Просроченные заявки:");
-        tickets.findOverdue().forEach(System.out::println);
-        System.out.println("При следующем запуске заявка #" + ticketId
-                + " появится в списке сохранённых заявок.");
+        List<Ticket> overdue = tickets.findOverdue();
+        if (overdue.isEmpty()) System.out.println("  Нет");
+        else overdue.forEach(ticket -> System.out.println("  " + ticket));
     }
 
-    // Повторно читает из БД заявку, её комментарии и историю изменений статуса.
+    // Показывает заявку, комментарии и историю статусов из базы
     private static void showTicket(JdbcTicketRepository tickets, JdbcCommentRepository comments, long ticketId) {
-        System.out.println("Заявка из БД: " + tickets.findById(ticketId).orElseThrow());
+        System.out.println("Заявка: " + tickets.findById(ticketId).orElseThrow());
+        System.out.println();
         System.out.println("Комментарии:");
         for (TicketComment comment : comments.findByTicketId(ticketId)) {
             System.out.println("  " + comment.getAuthorName() + " [" + comment.getAuthorRole() + "] "
                     + (comment.isInternal() ? "(внутренний) " : "") + comment.getText());
         }
+        System.out.println();
         System.out.println("История статусов:");
-        tickets.findStatusHistory(ticketId).forEach(System.out::println);
+        for (TicketStatusHistory entry : tickets.findStatusHistory(ticketId)) {
+            System.out.println("  " + entry.oldStatus() + " → " + entry.newStatus()
+                    + " | " + entry.changedAt().format(DATE_FORMAT)
+                    + " | пользователь #" + entry.changedById());
+        }
     }
 }

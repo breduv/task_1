@@ -18,7 +18,7 @@ import ru.example.helpdesk.model.UserRole;
 import ru.example.helpdesk.repository.UserRepository;
 
 public class JdbcUserRepository implements UserRepository {
-    // Сохраняет пользователя и получает его ID и дату из RETURNING.
+    // Сохраняет пользователя и получает его ID и дату из RETURNING
     @Override
     public User save(User user) {
         String sql = """
@@ -43,19 +43,19 @@ public class JdbcUserRepository implements UserRepository {
         }
     }
 
-    // Находит пользователя по первичному ключу.
+    // Находит пользователя по первичному ключу
     @Override
     public Optional<User> findById(long id) {
         return findOne("SELECT * FROM users WHERE id = ?", id, null);
     }
 
-    // Находит пользователя по уникальному email.
+    // Находит пользователя по уникальному email
     @Override
     public Optional<User> findByEmail(String email) {
         return findOne("SELECT * FROM users WHERE email = ?", null, email);
     }
 
-    // Выполняет один из двух параметризованных поисков и возвращает Optional.
+    // Ищет пользователя по ID или email
     private Optional<User> findOne(String sql, Long id, String email) {
         try (Connection connection = DatabaseConfig.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -69,7 +69,7 @@ public class JdbcUserRepository implements UserRepository {
         }
     }
 
-    // Читает всех пользователей по возрастанию ID.
+    // Читает всех пользователей по возрастанию ID
     @Override
     public List<User> findAll() {
         List<User> result = new ArrayList<>();
@@ -83,7 +83,7 @@ public class JdbcUserRepository implements UserRepository {
         }
     }
 
-    // По роли создаёт нужный подкласс User и заполняет данные из БД.
+    // Создаёт нужный тип пользователя по его роли
     private User mapUser(ResultSet rs) throws SQLException {
         long id = rs.getLong("id");
         String name = rs.getString("name");

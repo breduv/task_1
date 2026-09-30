@@ -1,6 +1,6 @@
 package ru.example.helpdesk.service;
 
 public interface NotificationService {
-    // Отправляет текст уведомления выбранным способом.
+    // Передаёт сообщение выбранному способу уведомления
     void send(String message);
 }
